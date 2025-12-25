@@ -7,6 +7,21 @@ use crate::graphics::{self, Shell, Viewport};
 use crate::settings::{self, Settings};
 use crate::{Engine, Renderer};
 
+pub trait HdrTextureFormatExt {
+    fn is_hdr_format(&self) -> bool;
+}
+
+impl HdrTextureFormatExt for wgpu::TextureFormat {
+    fn is_hdr_format(&self) -> bool {
+        matches!(
+            self,
+            wgpu::TextureFormat::Rgba16Float
+                | wgpu::TextureFormat::Rgba32Float
+                | wgpu::TextureFormat::Rgb10a2Unorm
+        )
+    }
+}
+
 /// A window graphics backend for iced powered by `wgpu`.
 pub struct Compositor {
     instance: wgpu::Instance,
@@ -108,11 +123,8 @@ impl Compositor {
                     format.required_features() == wgpu::Features::empty()
                 });
 
-                let format = if color::GAMMA_CORRECTION {
-                    formats.find(wgpu::TextureFormat::is_srgb)
-                } else {
-                    formats.find(|format| !wgpu::TextureFormat::is_srgb(format))
-                };
+                log::info!("Forcing a hdr format");
+                let format = formats.find(|format| format.is_hdr_format());
 
                 let format = format.or_else(|| {
                     log::warn!("No format found!");
